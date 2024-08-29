@@ -10,16 +10,16 @@ export function HeroScrollDemo() {
         titleComponent={
           <>
             <h1 className="text-4xl font-semibold text-white dark:text-black">
-              The society needs  <br />
+              Unleash the power of <br />
               <span className="text-4xl md:text-[6rem] font-bold mt-1 leading-none">
-                "your efforts"
+                Digitalization
               </span>
             </h1>
           </>
         }
       >
         <Image
-          src={"/public/images/goodimage.jpg"}
+          src={"https://assets.awwwards.com/awards/submissions/2024/03/65ef9fc2aab15397316439.png"}
           alt="hero"
           height={720}
           width={1400}

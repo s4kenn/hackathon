@@ -25,9 +25,9 @@ export const projects = [
         <PiMonitor className="w-8 h-8 text-blue-600" />
       </div>
     ),
-    title: "Monitor your Carbon Emission",
+    title: "Emission Calculator",
     description:
-      "We provide four parameters through which you can calculate your Carbon Emissions",
+      "Our user-friendly interface makes it easy to calculate your carbon emissions based on your daily activities.",
   },
   
   {
@@ -36,9 +36,9 @@ export const projects = [
         <PiGraph className="w-8 h-8 text-blue-600" />
       </div>
     ),
-    title: "Analyze and take actions immediately",
+    title: "Emission Analysis",
     description:
-      "We provide a bar graph through which you can analyze where the emissions can be reduced",
+      "Our platform analyzes your emissions using four key factors, providing a detailed breakdown of your carbon footprint.",
   },
   {
     icon: (
@@ -46,8 +46,8 @@ export const projects = [
         <PiHeadsetFill className="w-8 h-8 text-blue-600" />
       </div>
     ),
-    title: "AI based Suggestions to reduce the emissions",
+    title: "Sustainability Suggestions",
     description:
-      "Our Smart AI can help you by giving suggestions on where you can actually reduce the carbon emissions",
+      "Get personalized suggestions on how to reduce your carbon emissions, powered by an integrated chatbot.",
   },
 ];
