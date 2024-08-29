@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Carbon Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 80%;
+            margin: 0 auto;
+        }
+
+        h1,
+        h2 {
+            text-align: center;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .col {
+            flex: 0 0 48%;
+            padding: 10px;
+            background-color: white;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin: 15px 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="range"],
+        input[type="number"] {
+            width: 100%;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        .results {
+            background-color: #e9ecef;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .info,
+        .success,
+        .warning {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .info {
+            background-color: #17a2b8;
+            color: white;
+        }
+
+        .success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .warning {
+            background-color: #ffc107;
+            color: white;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Personal Carbon Calculator App ⚠️</h1>
+
+        <h2>🌍 Your Country</h2>
+        <select id="country">
+            <option value="Australia">Australia</option>
+            <option value="Austria">Austria</option>
+            <option value="Brazil">Brazil</option>
+            <option value="Canada">Canada</option>
+            <option value="Denmark">Denmark</option>
+            <option value="France">France</option>
+            <option value="Germany">Germany</option>
+            <option value="India">India</option>
+            <option value="Indonesia">Indonesia</option>
+            <option value="Israel">Israel</option>
+            <option value="Italy">Italy</option>
+            <option value="Japan">Japan</option>
+            <option value="Malaysia">Malaysia</option>
+            <option value="Mexico">Mexico</option>
+            <option value="Netherlands">Netherlands</option>
+            <option value="New Zealand">New Zealand</option>
+            <option value="Nigeria">Nigeria</option>
+            <option value="Norway">Norway</option>
+            <option value="Pakistan">Pakistan</option>
+            <option value="Philippines">Philippines</option>
+            <option value="South Africa">South Africa</option>
+            <option value="South Korea">South Korea</option>
+            <option value="Saudi Arabia">Saudi Arabia</option>
+            <option value="Singapore">Singapore</option>
+            <option value="Spain">Spain</option>
+            <option value="Sweden">Sweden</option>
+            <option value="Switzerland">Switzerland</option>
+            <option value="Thailand">Thailand</option>
+            <option value="Turkey">Turkey</option>
+            <option value="USA">USA</option>
+            <option value="UK">UK</option>
+            <option value="Vietnam">Vietnam</option>
+        </select>
+
+        <div class="row">
+            <div class="col">
+                <div class="form-group">
+                    <h2>🚗 Daily commute distance (in km)</h2>
+                    <input type="range" id="distance" min="0" max="100" step="0.1">
+                    <input type="number" id="distanceInput" min="0" step="0.1">
+                </div>
+                <div class="form-group">
+                    <h2>💡 Monthly electricity consumption (in kWh)</h2>
+                    <input type="range" id="electricity" min="0" max="1000" step="0.1">
+                    <input type="number" id="electricityInput" min="0" step="0.1">
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="form-group">
+                    <h2>🍽️ Waste generated per week (in kg)</h2>
+                    <input type="range" id="waste" min="0" max="100" step="0.1">
+                    <input type="number" id="wasteInput" min="0" step="0.1">
+                </div>
+                <div class="form-group">
+                    <h2>🍽️ Number of meals per day</h2>
+                    <input type="number" id="meals" min="0">
+                </div>
+            </div>
+        </div>
+
+        <button class="btn" onclick="calculateEmissions()">Calculate CO2 Emissions</button>
+
+        <div id="results" class="results" style="display:none;">
+            <h2>Results</h2>
+            <div id="carbonEmissions" class="info"></div>
+            <div id="totalFootprint" class="success"></div>
+            <div id="countryData" class="warning"></div>
+            <div id="emissionCategory" class="info"></div>
+            <canvas id="emissionsChart"></canvas>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let chartInstance;
+
+        const EMISSION_LIMITS = {
+            low: 4,      // Low emissions threshold in tons CO2
+            moderate: 8.9, // Moderate emissions threshold in tons CO2
+            high: 14     // High emissions threshold in tons CO2
+        };
+        // Define emission factors
+        const EMISSION_FACTORS = {
+            "India": {
+                "Transportation": 0.00014, // tons CO2/km
+                "Electricity": 0.00082, // tons CO2/kWh
+                "Diet": 0.00125, // tons CO2/meal
+                "Waste": 0.0001 // tons CO2/kg
+            },
+            "Germany": {
+                "Transportation": 0.00012, // tons CO2/km
+                "Electricity": 0.00033, // tons CO2/kWh
+                "Diet": 0.00115, // tons CO2/meal
+                "Waste": 0.0002 // tons CO2/kg
+            },
+            "Japan": {
+                "Transportation": 0.00011, // tons CO2/km
+                "Electricity": 0.00045, // tons CO2/kWh
+                "Diet": 0.00110, // tons CO2/meal
+                "Waste": 0.00015 // tons CO2/kg
+            },
+            "USA": {
+                "Transportation": 0.00020, // tons CO2/km
+                "Electricity": 0.00040, // tons CO2/kWh
+                "Diet": 0.00150, // tons CO2/meal
+                "Waste": 0.00030 // tons CO2/kg
+            },
+            "UK": {
+                "Transportation": 0.00013, // tons CO2/km
+                "Electricity": 0.00022, // tons CO2/kWh
+                "Diet": 0.00105, // tons CO2/meal
+                "Waste": 0.00025 // tons CO2/kg
+            },
+            "Nigeria": {
+                "Transportation": 0.00020, // tons CO2/km
+                "Electricity": 0.00090, // tons CO2/kWh
+                "Diet": 0.00130, // tons CO2/meal
+                "Waste": 0.00015 // tons CO2/kg
+            },
+            "Pakistan": {
+                "Transportation": 0.00016, // tons CO2/km
+                "Electricity": 0.00085, // tons CO2/kWh
+                "Diet": 0.00120, // tons CO2/meal
+                "Waste": 0.00012 // tons CO2/kg
+            },
+            "Mexico": {
+                "Transportation": 0.00018, // tons CO2/km
+                "Electricity": 0.00064, // tons CO2/kWh
+                "Diet": 0.00125, // tons CO2/meal
+                "Waste": 0.00018 // tons CO2/kg
+            },
+            "Canada": {
+                "Transportation": 0.00015, // tons CO2/km
+                "Electricity": 0.00017, // tons CO2/kWh
+                "Diet": 0.00110, // tons CO2/meal
+                "Waste": 0.00022 // tons CO2/kg
+            },
+            "Australia": {
+                "Transportation": 0.00016, // tons CO2/km
+                "Electricity": 0.00076, // tons CO2/kWh
+                "Diet": 0.00120, // tons CO2/meal
+                "Waste": 0.00027 // tons CO2/kg
+            },
+            "France": {
+                "Transportation": 0.00011, // tons CO2/km
+                "Electricity": 0.00015, // tons CO2/kWh
+                "Diet": 0.00100, // tons CO2/meal
+                "Waste": 0.00020 // tons CO2/kg
+            },
+            "Brazil": {
+                "Transportation": 0.00017, // tons CO2/km
+                "Electricity": 0.00045, // tons CO2/kWh
+                "Diet": 0.00130, // tons CO2/meal
+                "Waste": 0.00014 // tons CO2/kg
+            },
+            "South Africa": {
+                "Transportation": 0.00019, // tons CO2/km
+                "Electricity": 0.00091, // tons CO2/kWh
+                "Diet": 0.00135, // tons CO2/meal
+                "Waste": 0.00016 // tons CO2/kg
+            },
+            "Italy": {
+                "Transportation": 0.00012, // tons CO2/km
+                "Electricity": 0.00027, // tons CO2/kWh
+                "Diet": 0.00120, // tons CO2/meal
+                "Waste": 0.00023 // tons CO2/kg
+            },
+            "Spain": {
+                "Transportation": 0.00014, // tons CO2/km
+                "Electricity": 0.00024, // tons CO2/kWh
+                "Diet": 0.00115, // tons CO2/meal
+                "Waste": 0.00022 // tons CO2/kg
+            },
+            "Turkey": {
+                "Transportation": 0.00016, // tons CO2/km
+                "Electricity": 0.00062, // tons CO2/kWh
+                "Diet": 0.00130, // tons CO2/meal
+                "Waste": 0.00017 // tons CO2/kg
+            },
+            "Indonesia": {
+                "Transportation": 0.00017, // tons CO2/km
+                "Electricity": 0.00080, // tons CO2/kWh
+                "Diet": 0.00140, // tons CO2/meal
+                "Waste": 0.00015 // tons CO2/kg
+            },
+            "Thailand": {
+                "Transportation": 0.00015, // tons CO2/km
+                "Electricity": 0.00069, // tons CO2/kWh
+                "Diet": 0.00125, // tons CO2/meal
+                "Waste": 0.00014 // tons CO2/kg
+            },
+            "Malaysia": {
+                "Transportation": 0.00014, // tons CO2/km
+                "Electricity": 0.00063, // tons CO2/kWh
+                "Diet": 0.00120, // tons CO2/meal
+                "Waste": 0.00016 // tons CO2/kg
+            },
+            "Philippines": {
+                "Transportation": 0.00018, // tons CO2/km
+                "Electricity": 0.00075, // tons CO2/kWh
+                "Diet": 0.00135, // tons CO2/meal
+                "Waste": 0.00012 // tons CO2/kg
+            },
+            "Vietnam": {
+                "Transportation": 0.00016, // tons CO2/km
+                "Electricity": 0.00078, // tons CO2/kWh
+                "Diet": 0.00130, // tons CO2/meal
+                "Waste": 0.00013 // tons CO2/kg
+            },
+            "Netherlands": {
+                "Transportation": 0.00011, // tons CO2/km
+                "Electricity": 0.00030, // tons CO2/kWh
+                "Diet": 0.00110, // tons CO2/meal
+                "Waste": 0.00021 // tons CO2/kg
+            },
+            "Sweden": {
+                "Transportation": 0.00010, // tons CO2/km
+                "Electricity": 0.00006, // tons CO2/kWh
+                "Diet": 0.00105, // tons CO2/meal
+                "Waste": 0.00018 // tons CO2/kg
+            },
+            "Norway": {
+                "Transportation": 0.00009, // tons CO2/km
+                "Electricity": 0.00002, // tons CO2/kWh
+                "Diet": 0.00100, // tons CO2/meal
+                "Waste": 0.00020 // tons CO2/kg
+            },
+            "Denmark": {
+                "Transportation": 0.00012, // tons CO2/km
+                "Electricity": 0.00010, // tons CO2/kWh
+                "Diet": 0.00110, // tons CO2/meal
+                "Waste": 0.00022 // tons CO2/kg
+            },
+            "Austria": {
+                "Transportation": 0.00013, // tons CO2/km
+                "Electricity": 0.00018, // tons CO2/kWh
+                "Diet": 0.00105, // tons CO2/meal
+                "Waste": 0.00023 // tons CO2/kg
+            },
+            "Switzerland": {
+                "Transportation": 0.00011, // tons CO2/km
+                "Electricity": 0.00006, // tons CO2/kWh
+                "Diet": 0.00100, // tons CO2/meal
+                "Waste": 0.00025 // tons CO2/kg
+            },
+            "New Zealand": {
+                "Transportation": 0.00014, // tons CO2/km
+                "Electricity": 0.00007, // tons CO2/kWh
+                "Diet": 0.00120, // tons CO2/meal
+                "Waste": 0.00028 // tons CO2/kg
+            },
+            "Singapore": {
+                "Transportation": 0.00013, // tons CO2/km
+                "Electricity": 0.00045, // tons CO2/kWh
+                "Diet": 0.00110, // tons CO2/meal
+                "Waste": 0.00017 // tons CO2/kg
+            },
+            "South Korea": {
+                "Transportation": 0.00012, // tons CO2/km
+                "Electricity": 0.00050, // tons CO2/kWh
+                "Diet": 0.00120, // tons CO2/meal
+                "Waste": 0.00015 // tons CO2/kg
+            },
+            "Israel": {
+                "Transportation": 0.00014, // tons CO2/km
+                "Electricity": 0.00060, // tons CO2/kWh
+                "Diet": 0.00115, // tons CO2/meal
+                "Waste": 0.00020 // tons CO2/kg
+            },
+            "Saudi Arabia": {
+                "Transportation": 0.00022, // tons CO2/km
+                "Electricity": 0.00075, // tons CO2/kWh
+                "Diet": 0.00130, // tons CO2/meal
+                "Waste": 0.00018 // tons CO2/kg
+            }
+        };
+
+        // Existing emission factors
+
+
+        const CO2_PER_CAPITA = {
+            // Existing CO2 per capita data
+            "India": "In 2023, CO2 emissions per capita for India were 2.1 tons of CO2 per capita. Between 1972 and 2023, CO2 emissions per capita of India grew from 0.39 to 2.1 tons of CO2 per capita, reflecting a continued increase but at a slower rate compared to previous decades.",
+            "Germany": "In 2023, CO2 emissions per capita for Germany were 7.6 tons of CO2 per capita. Germany has seen a gradual decrease from a peak of 12.2 tons in 1972, thanks to significant investments in renewable energy and energy efficiency.",
+            "Japan": "In 2023, CO2 emissions per capita for Japan were 8.3 tons of CO2 per capita. Japan's emissions peaked at around 11.3 tons in 2007 but have been reduced through energy efficiency measures and increased use of renewable energy.",
+            "USA": "In 2023, CO2 emissions per capita for the USA were 14.8 tons of CO2 per capita. The USA experienced a peak of 20.3 tons in 2007, with a decline due to improvements in energy efficiency and a shift towards cleaner energy sources.",
+            "UK": "In 2023, CO2 emissions per capita for the UK were 5.2 tons of CO2 per capita. The UK saw a peak of 11.2 tons in 1972 but has reduced its emissions significantly through aggressive climate policies and a transition to renewable energy.",
+            "Nigeria": "In 2023, CO2 emissions per capita for Nigeria were 0.8 tons of CO2 per capita. Nigeria's emissions have been relatively low, reflecting its ongoing economic development and energy challenges.",
+            "Pakistan": "In 2023, CO2 emissions per capita for Pakistan were 1.1 tons of CO2 per capita. Pakistan has seen an increase from 0.5 tons in 1972, driven by rapid population growth and industrialization.",
+            "Mexico": "In 2023, CO2 emissions per capita for Mexico were 3.0 tons of CO2 per capita. Mexico's emissions have increased from 1.0 tons in 1972 due to economic growth and industrialization.",
+            "Canada": "In 2023, CO2 emissions per capita for Canada were 15.1 tons of CO2 per capita. Canada has seen fluctuations in emissions but remains high due to its energy-intensive industries and cold climate.",
+            "Australia": "In 2023, CO2 emissions per capita for Australia were 16.0 tons of CO2 per capita. Australia experienced a peak of 24.0 tons in 2007, but emissions have been reduced slightly through climate policies and a shift in energy sources.",
+            "France": "In 2023, CO2 emissions per capita for France were 4.5 tons of CO2 per capita. France has reduced its emissions from a peak of 10.2 tons in 1972, largely due to its reliance on nuclear energy.",
+            "Brazil": "In 2023, CO2 emissions per capita for Brazil were 2.8 tons of CO2 per capita. Brazil's emissions have increased from 0.6 tons in 1972, driven by deforestation and industrial growth.",
+            "South Africa": "In 2023, CO2 emissions per capita for South Africa were 7.9 tons of CO2 per capita. South Africa's emissions have grown from 1.3 tons in 1972, driven by energy production from coal.",
+            "Italy": "In 2023, CO2 emissions per capita for Italy were 5.8 tons of CO2 per capita. Italy has seen a decrease from a peak of 9.7 tons in 1972, largely due to energy efficiency measures and a transition to renewable energy.",
+            "Spain": "In 2023, CO2 emissions per capita for Spain were 6.2 tons of CO2 per capita. Spain's emissions peaked at 9.8 tons in 2007 but have been reduced through climate policies and renewable energy adoption.",
+            "Turkey": "In 2023, CO2 emissions per capita for Turkey were 4.7 tons of CO2 per capita. Turkey's emissions have increased from 1.2 tons in 1972 due to rapid industrialization and economic growth.",
+            "Indonesia": "In 2023, CO2 emissions per capita for Indonesia were 2.5 tons of CO2 per capita. Indonesia's emissions have risen from 0.6 tons in 1972, driven by economic development and deforestation.",
+            "Thailand": "In 2023, CO2 emissions per capita for Thailand were 3.7 tons of CO2 per capita. Thailand's emissions have increased from 0.9 tons in 1972, driven by economic growth and energy consumption.",
+            "Malaysia": "In 2023, CO2 emissions per capita for Malaysia were 5.0 tons of CO2 per capita. Malaysia's emissions have grown from 1.0 tons in 1972 due to industrialization and increased energy use.",
+            "Philippines": "In 2023, CO2 emissions per capita for the Philippines were 1.6 tons of CO2 per capita. The Philippines' emissions have increased from 0.4 tons in 1972, reflecting economic development and population growth.",
+            "Vietnam": "In 2023, CO2 emissions per capita for Vietnam were 2.2 tons of CO2 per capita. Vietnam's emissions have risen from 0.5 tons in 1972 due to rapid industrialization and economic growth.",
+            "Netherlands": "In 2023, CO2 emissions per capita for the Netherlands were 6.5 tons of CO2 per capita. The Netherlands has seen a reduction from a peak of 11.1 tons in 1972, thanks to energy efficiency and renewable energy adoption.",
+            "Sweden": "In 2023, CO2 emissions per capita for Sweden were 4.3 tons of CO2 per capita. Sweden has reduced its emissions from a peak of 7.4 tons in 1972 through extensive use of renewable energy and climate policies.",
+            "Norway": "In 2023, CO2 emissions per capita for Norway were 5.0 tons of CO2 per capita. Norway's emissions have decreased from a peak of 9.2 tons in 1972 due to its focus on renewable energy and energy efficiency.",
+            "Denmark": "In 2023, CO2 emissions per capita for Denmark were 5.4 tons of CO2 per capita. Denmark has seen a reduction from a peak of 10.6 tons in 1972 through aggressive climate policies and renewable energy use.",
+            "Austria": "In 2023, CO2 emissions per capita for Austria were 6.1 tons of CO2 per capita. Austria has reduced its emissions from a peak of 10.5 tons in 1972, thanks to a focus on renewable energy and energy efficiency.",
+            "Switzerland": "In 2023, CO2 emissions per capita for Switzerland were 5.7 tons of CO2 per capita. Switzerland's emissions have decreased from a peak of 9.8 tons in 1972 through energy efficiency and a shift to renewable energy.",
+            "New Zealand": "In 2023, CO2 emissions per capita for New Zealand were 8.0 tons of CO2 per capita. New Zealand's emissions have seen fluctuations but have remained high due to its energy-intensive industries and agricultural sector.",
+            "Singapore": "In 2023, CO2 emissions per capita for Singapore were 7.4 tons of CO2 per capita. Singapore's emissions have grown from 3.8 tons in 1972 due to rapid economic development and industrialization.",
+            "South Korea": "In 2023, CO2 emissions per capita for South Korea were 11.2 tons of CO2 per capita. South Korea's emissions have increased from 2.2 tons in 1972, driven by rapid industrialization and economic growth.",
+            "Israel": "In 2023, CO2 emissions per capita for Israel were 7.0 tons of CO2 per capita. Israel's emissions have risen from 2.5 tons in 1972 due to economic development and industrial growth.",
+            "Saudi Arabia": "In 2023, CO2 emissions per capita for Saudi Arabia were 21.0 tons of CO2 per capita. Saudi Arabia has maintained high emissions levels due to its reliance on oil production and energy consumption.",
+            "Turkey": "In 2023, CO2 emissions per capita for Turkey were 4.7 tons of CO2 per capita. Turkey has seen an increase from 1.2 tons in 1972 due to rapid industrialization and economic growth.",
+            "Austria": "In 2023, CO2 emissions per capita for Austria were 6.1 tons of CO2 per capita. Austria has reduced its emissions from a peak of 10.5 tons in 1972, thanks to a focus on renewable energy and energy efficiency.",
+            "Switzerland": "In 2023, CO2 emissions per capita for Switzerland were 5.7 tons of CO2 per capita. Switzerland's emissions have decreased from a peak of 9.8 tons in 1972 through energy efficiency and a shift to renewable energy.",
+            "New Zealand": "In 2023, CO2 emissions per capita for New Zealand were 8.0 tons of CO2 per capita. New Zealand's emissions have seen fluctuations but have remained high due to its energy-intensive industries and agricultural sector."
+
+        };
+
+        function getEmissionCategory(totalFootprint) {
+            if (totalFootprint <= EMISSION_LIMITS.low) {
+                return 'Low';
+            } else if (totalFootprint <= EMISSION_LIMITS.moderate) {
+                return 'Moderate';
+            } else if (totalFootprint <= EMISSION_LIMITS.high) {
+                return 'High';
+            } else {
+                return 'Very High';
+            }
+        }
+
+        function updateChart(transportation_emissions, electricity_emissions, diet_emissions, waste_emissions) {
+            const ctx = document.getElementById('emissionsChart').getContext('2d');
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Transportation', 'Electricity', 'Diet', 'Waste'],
+                    datasets: [{
+                        label: 'CO2 Emissions (Tons CO2)',
+                        data: [transportation_emissions, electricity_emissions, diet_emissions, waste_emissions],
+                        backgroundColor: ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true
+                }
+            });
+        }
+
+
+        function calculateEmissions() {
+
+            const meals_try = document.getElementById('meals').value;
+
+            // Check if meals input is blank
+            if (meals_try === '' || isNaN(meals_try) || meals_try <= 0) {
+                alert('Please enter a valid number of meals per day.');
+                return; // Exit the function if input is invalid
+            }
+
+            const country = document.getElementById("country").value;
+            const distance = parseFloat(document.getElementById("distance").value) * 365; // Convert daily to yearly
+            const electricity = parseFloat(document.getElementById("electricity").value) * 12; // Convert monthly to yearly
+            const waste = parseFloat(document.getElementById("waste").value) * 52; // Convert weekly to yearly
+            const meals = parseInt(document.getElementById("meals").value) * 365; // Convert daily to yearly
+
+            const transportation_emissions = (EMISSION_FACTORS[country]["Transportation"] * distance);
+            const electricity_emissions = (EMISSION_FACTORS[country]["Electricity"] * electricity);
+            const diet_emissions = (EMISSION_FACTORS[country]["Diet"] * meals);
+            const waste_emissions = (EMISSION_FACTORS[country]["Waste"] * waste);
+
+            const total_emissions = transportation_emissions + electricity_emissions + diet_emissions + waste_emissions;
+            const emissionCategory = getEmissionCategory(total_emissions);
+            document.getElementById('emissionCategory').textContent = `Emission Category: ${emissionCategory}`; // Display the category
+
+            document.getElementById("carbonEmissions").innerText = `Transportation: ${transportation_emissions.toFixed(2)} Tons CO2\nElectricity: ${electricity_emissions.toFixed(2)} Tons CO2\nDiet: ${diet_emissions.toFixed(2)} Tons CO2\nWaste: ${waste_emissions.toFixed(2)} Tons CO2`;
+            document.getElementById("totalFootprint").innerText = `Total Carbon Footprint: ${total_emissions.toFixed(2)} Tons CO2`;
+
+            const countryData = CO2_PER_CAPITA[country];
+            document.getElementById("countryData").innerText = `CO2 per Capita in ${country}: ${countryData}`;
+
+            updateChart(transportation_emissions, electricity_emissions, diet_emissions, waste_emissions);
+
+            document.getElementById("results").style.display = "block";
+
+        }
+
+        function syncInputWithRange() {
+            const distance = document.getElementById("distance");
+            const distanceInput = document.getElementById("distanceInput");
+            distanceInput.value = distance.value;
+            distance.addEventListener('input', () => {
+                distanceInput.value = distance.value;
+            });
+            distanceInput.addEventListener('input', () => {
+                distance.value = distanceInput.value;
+            });
+
+            const electricity = document.getElementById("electricity");
+            const electricityInput = document.getElementById("electricityInput");
+            electricityInput.value = electricity.value;
+            electricity.addEventListener('input', () => {
+                electricityInput.value = electricity.value;
+            });
+            electricityInput.addEventListener('input', () => {
+                electricity.value = electricityInput.value;
+            });
+
+            const waste = document.getElementById("waste");
+            const wasteInput = document.getElementById("wasteInput");
+            wasteInput.value = waste.value;
+            waste.addEventListener('input', () => {
+                wasteInput.value = waste.value;
+            });
+            wasteInput.addEventListener('input', () => {
+                waste.value = wasteInput.value;
+            });
+
+            const meals = document.getElementById("meals");
+            const mealsInput = document.getElementById("mealsInput");
+            mealsInput.value = meals.value;
+            meals.addEventListener('input', () => {
+                mealsInput.value = meals.value;
+            });
+            mealsInput.addEventListener('input', () => {
+                meals.value = mealsInput.value;
+            });
+        }
+
+        window.onload = function () {
+            syncInputWithRange();
+        };
+
+    </script>
+</body>
+
+</html>
